@@ -1,0 +1,12 @@
+{
+    "Repositories": {
+        "test": {
+            "Metadata": {
+                "Path": "local-store/metadata-test.json"
+            },
+            "Storage": {
+                "Path": "local-store/storage-test"
+            }
+        }
+    }
+}

@@ -1,0 +1,297 @@
+package maven
+
+import (
+	"crypto/md5"
+	"crypto/sha1"
+	"encoding/hex"
+	"encoding/xml"
+	"io"
+	"log"
+	"net/http"
+	"strings"
+	"time"
+
+	"github.com/minecrafter/sage/repository"
+)
+
+type MavenRetrieveHandler struct {
+	root          string
+	metadataStore repository.MetadataStore
+	storageStore  repository.StorageStore
+}
+
+func NewMavenRetrieveHandler(path string, metadataStore repository.MetadataStore, storageStore repository.StorageStore) MavenRetrieveHandler {
+	return MavenRetrieveHandler{
+		root:          path,
+		metadataStore: metadataStore,
+		storageStore:  storageStore,
+	}
+}
+
+func (h *MavenRetrieveHandler) GetMavenFile(w http.ResponseWriter, r *http.Request) {
+	// Example URLs:
+	// http://repo.maven.apache.org/maven2/com/aerospike/aerospike-client/maven-metadata.xml
+	// http://repo.maven.apache.org/maven2/com/aerospike/aerospike-client/3.3.0/aerospike-client-3.3.0.jar
+	// http://repo.maven.apache.org/maven2/com/aerospike/aerospike-client/3.3.0/aerospike-client-3.3.0.pom
+	path := r.URL.EscapedPath()
+	if !strings.HasPrefix(path, h.root) {
+		// Can't handle this request
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	subtype := strings.TrimPrefix(path, h.root)
+
+	if strings.HasSuffix(subtype, "maven-metadata.xml") {
+		h.serveMavenMetadata(w, subtype)
+	} else if strings.HasSuffix(subtype, ".pom") || strings.HasSuffix(subtype, ".jar") {
+		h.serveMavenFile(w, r, subtype)
+	} else if strings.HasSuffix(subtype, ".pom.md5") || strings.HasSuffix(subtype, ".pom.sha1") || strings.HasSuffix(subtype, ".jar.md5") || strings.HasSuffix(subtype, ".jar.sha1") {
+		h.serveMavenHash(w, subtype)
+	} else {
+		w.WriteHeader(http.StatusNotFound)
+	}
+}
+
+func getPackageID(path string, inPackage bool) string {
+	if strings.HasPrefix(path, "/") {
+		path = path[1:]
+	}
+	parts := strings.Split(path, "/")
+	if inPackage {
+		return strings.Join(parts[:len(parts)-2], ":")
+	}
+	return strings.Join(parts[:len(parts)-1], ":")
+}
+
+func getPackageMavenData(path string, inPackage bool) repository.MavenData {
+	if strings.HasPrefix(path, "/") {
+		path = path[1:]
+	}
+	parts := strings.Split(path, "/")
+	if inPackage {
+		ourParts := parts[:len(parts)-2]
+		return repository.MavenData{
+			GroupID:    strings.Join(ourParts[:len(ourParts)-1], "."),
+			ArtifactID: ourParts[len(ourParts)-1],
+		}
+	}
+	return repository.MavenData{
+		GroupID:    strings.Join(parts[:len(parts)-1], "."),
+		ArtifactID: parts[len(parts)-1],
+	}
+}
+
+func getPackageVersion(path string) string {
+	parts := strings.Split(path, "/")
+	return parts[len(parts)-2]
+}
+
+func (h *MavenRetrieveHandler) serveMavenMetadata(w http.ResponseWriter, path string) {
+	// get package ID
+	id := getPackageID(path, false)
+
+	// get package metadata
+	metadata, err := h.metadataStore.FindByID(id)
+	if err != nil {
+		if err == repository.ErrPackageNotFound {
+			// package not found
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte("package not found"))
+		} else {
+			log.Printf("Unable to lookup package %s: %s", id, err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+		return
+	}
+
+	mavenData := CreateMavenMetadata(*metadata)
+	w.Header().Add("Content-Type", "application/xml")
+	w.WriteHeader(http.StatusOK)
+	xml.NewEncoder(w).Encode(mavenData)
+}
+
+func (h *MavenRetrieveHandler) serveMavenHash(w http.ResponseWriter, path string) {
+	// get package ID and version
+	id := getPackageID(path, true)
+	version := getPackageVersion(path)
+
+	// get package metadata
+	metadata, err := h.metadataStore.FindByID(id)
+	if err != nil {
+		if err == repository.ErrPackageNotFound {
+			// package not found
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte("package not found"))
+		} else {
+			log.Printf("Unable to lookup package %s: %s", id, err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+		return
+	}
+
+	w.Header().Add("Content-Type", "text/plain")
+
+	// get specific file requested
+	for _, versionMetadata := range metadata.Versions {
+		if versionMetadata.Version == version {
+			// get file
+			fileName := path[strings.LastIndex(path, "/"):strings.LastIndex(path, ".")]
+			data, exists := versionMetadata.Files[fileName]
+			if !exists {
+				break
+			}
+
+			if strings.HasSuffix(path, "sha1") {
+				w.Write([]byte(data.SHA1))
+			} else if strings.HasSuffix(path, "md5") {
+				w.Write([]byte(data.MD5))
+			}
+			return
+		}
+	}
+
+	// otherwise, not found
+	w.WriteHeader(http.StatusNotFound)
+	w.Write([]byte("content not found"))
+}
+
+func (h *MavenRetrieveHandler) serveMavenFile(w http.ResponseWriter, r *http.Request, path string) {
+	// get package ID and version
+	id := getPackageID(path, true)
+	version := getPackageVersion(path)
+
+	// get package metadata
+	metadata, err := h.metadataStore.FindByID(id)
+	if err != nil {
+		if err == repository.ErrPackageNotFound {
+			// package not found
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte("package not found"))
+		} else {
+			log.Printf("Unable to lookup package %s: %s", id, err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// get specific file requested
+	for _, versionMetadata := range metadata.Versions {
+		if versionMetadata.Version == version {
+			// get file
+			fileName := path[strings.LastIndex(path, "/"):]
+			data, exists := versionMetadata.Files[fileName]
+			if !exists {
+				break
+			}
+			reader, err := h.storageStore.ReadByID(data.ID)
+			if err != nil {
+				log.Printf("Unable to read content: %s", err.Error())
+				w.WriteHeader(http.StatusInternalServerError)
+			} else {
+				closer, ok := reader.(io.Closer)
+				if ok {
+					defer closer.Close()
+				}
+				http.ServeContent(w, r, fileName, versionMetadata.Created, reader)
+			}
+			return
+		}
+	}
+
+	// otherwise, not found
+	w.WriteHeader(http.StatusNotFound)
+	w.Write([]byte("content not found"))
+}
+
+func (h *MavenRetrieveHandler) PutMavenFile(w http.ResponseWriter, r *http.Request, path string) {
+	// TODO: Authentication
+	/*_, _, ok := r.BasicAuth()
+	if !ok {
+		w.Header.Add("WWW-Authenticate", "Basic realm=\"Sage\"")
+		w.WriteHeader(http.StatusForbidden)
+		return
+	}*/
+
+	// TODO: Properly handle input. Check if we're uploading a real JAR or POM file for instance.
+
+	// get package ID and version
+	id := getPackageID(path, true)
+	version := getPackageVersion(path)
+
+	// Copy body to new storage file. Use io.TeeReader to allow us to calculate hashes at the same time.
+	writer, sid, err := h.storageStore.Write()
+	if err != nil {
+		log.Printf("Unable to create content: %s", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	defer writer.Close()
+	sha1Sum := sha1.New()
+	md5Sum := md5.New()
+	teeReader := io.TeeReader(r.Body, io.MultiWriter(sha1Sum, md5Sum))
+	if _, err := io.Copy(writer, teeReader); err != nil {
+		log.Printf("Unable to create content: %s", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	fileMetadata := repository.UploadedFileMetadata{
+		ID:   sid,
+		SHA1: hex.EncodeToString(sha1Sum.Sum(nil)),
+		MD5:  hex.EncodeToString(md5Sum.Sum(nil)),
+	}
+	fileName := path[strings.LastIndex(path, "/"):]
+
+	// create version and package if needed
+	metadata, err := h.metadataStore.FindByID(id)
+	if err != nil {
+		if err == repository.ErrPackageNotFound {
+			// package not found, create
+			files := make(map[string]repository.UploadedFileMetadata)
+			files[fileName] = fileMetadata
+			metadata = &repository.PackageMetadata{
+				PackageID: id,
+				MavenData: getPackageMavenData(path, true),
+				Versions: []repository.PackageVersionMetadata{
+					repository.PackageVersionMetadata{
+						Version: version,
+						Files:   files,
+						Created: time.Now(),
+					},
+				},
+			}
+		} else {
+			log.Printf("Unable to lookup package %s: %s", id, err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	} else {
+		updated := false
+		for _, value := range metadata.Versions {
+			if value.Version == version {
+				value.Files[fileName] = fileMetadata
+				updated = true
+				break
+			}
+		}
+
+		if !updated {
+			// otherwise, create and save
+			files := make(map[string]repository.UploadedFileMetadata)
+			files[fileName] = fileMetadata
+			metadata.Versions = append(metadata.Versions, repository.PackageVersionMetadata{
+				Version: version,
+				Files:   files,
+				Created: time.Now(),
+			})
+		}
+	}
+
+	if err = h.metadataStore.Store(*metadata); err != nil {
+		log.Printf("Unable to create version: %s", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+	} else {
+		w.WriteHeader(http.StatusCreated)
+	}
+}
