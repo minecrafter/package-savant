@@ -22,7 +22,7 @@ func main() {
 			store.NewLocalPackageStore(value.Storage.Path))
 	}
 
-	if err := http.ListenAndServe(":8196", server.RepoHTTPHandler{
+	if err := http.ListenAndServe(conf.Listen, server.RepoHTTPHandler{
 		Repositories: configuredRepositories,
 	}); err != nil {
 		log.Fatalln(err)
