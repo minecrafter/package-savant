@@ -1,3 +1,3 @@
-# dollop
+# Sage
 
-Coming soon...
+Lightweight generic (currently only supports Maven) repository provider written in Go.
