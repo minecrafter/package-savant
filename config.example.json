@@ -1,5 +1,10 @@
 {
     "Listen": ":8196",
+    "SSL": {
+        "Enabled": false,
+        "KeyFile": "key.pem",
+        "CertFile": "cert.pem"
+    },
     "Repositories": {
         "test": {
             "Metadata": {

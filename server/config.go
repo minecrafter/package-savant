@@ -11,6 +11,7 @@ import (
 type Config struct {
 	Listen       string
 	Repositories map[string]RepoConfig
+	SSL          SSLConfig
 }
 
 type RepoConfig struct {
@@ -29,6 +30,12 @@ type StorageConfig struct {
 
 type AuthenticationConfig struct {
 	Logins map[string]string
+}
+
+type SSLConfig struct {
+	Enabled bool
+	CertFile string
+	KeyFile string
 }
 
 func (c AuthenticationConfig) CheckPassword(username, password string) (bool, error) {

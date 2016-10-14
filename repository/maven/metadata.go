@@ -1,10 +1,6 @@
 package maven
 
-import (
-	"sort"
-
-	"github.com/minecrafter/sage/repository"
-)
+import "github.com/minecrafter/sage/repository"
 
 const (
 	mavenDateFormat = "20060102150405"
@@ -17,11 +13,12 @@ func CreateMavenMetadata(metadata repository.PackageMetadata) MavenMetadata {
 		ArtifactID: metadata.MavenData.ArtifactID,
 	}
 
-	// Copy and sort versions. While we could have sorted versions beforehand, we would only gain mimimal beenfits.
+	// Copy and sort versions. While we could have sorted versions beforehand, we would only gain minimal benefits.
 	versions := make([]repository.PackageVersionMetadata, len(metadata.Versions))
 	copy(versions, metadata.Versions)
-	sort.Sort(repository.PackageVersionCollection(versions))
+	repository.SortVersionsByCreated(versions)
 
+	// Stringify the sorted versions.
 	sortedVersions := make([]string, len(metadata.Versions))
 	for i, version := range versions {
 		sortedVersions[i] = version.Version

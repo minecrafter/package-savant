@@ -1,0 +1,18 @@
+{
+    // NB: This will only work on Linux!
+    "version": "0.1.0",
+    "command": "sh",
+    "isShellCommand": true,
+    "args": ["-c"],
+    "showOutput": "always",
+    "echoCommand": true,
+    "suppressTaskName": true,    
+    "tasks": [
+        {
+            "taskName": "kill previous instance",
+            "args": [
+                "fuser -k 8196/tcp"
+            ]
+        }
+    ]
+}

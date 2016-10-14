@@ -12,6 +12,7 @@
             "program": "${workspaceRoot}",
             "env": {},
             "args": [],
+            "preLaunchTask": "kill previous instance",
             "showLog": true
         }
     ]

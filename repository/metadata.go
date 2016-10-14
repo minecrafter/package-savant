@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"sort"
 	"time"
 )
 
@@ -18,15 +19,15 @@ type PackageVersionMetadata struct {
 	Created time.Time
 }
 
-type PackageVersionCollection []PackageVersionMetadata
+type packageVersionCollection []PackageVersionMetadata
 
-func (s PackageVersionCollection) Len() int {
+func (s packageVersionCollection) Len() int {
 	return len(s)
 }
-func (s PackageVersionCollection) Swap(i, j int) {
+func (s packageVersionCollection) Swap(i, j int) {
 	s[i], s[j] = s[j], s[i]
 }
-func (s PackageVersionCollection) Less(i, j int) bool {
+func (s packageVersionCollection) Less(i, j int) bool {
 	return s[i].Created.Before(s[j].Created)
 }
 
@@ -41,4 +42,9 @@ type UploadedFileMetadata struct {
 type MavenData struct {
 	GroupID    string
 	ArtifactID string
+}
+
+// SortVersionsByCreated sorts the PackageVersionMetadata slice provided by creation date.
+func SortVersionsByCreated(versions []PackageVersionMetadata) {
+	sort.Sort(packageVersionCollection(versions))
 }

@@ -22,9 +22,14 @@ func main() {
 			store.NewLocalPackageStore(value.Storage.Path))
 	}
 
-	if err := http.ListenAndServe(conf.Listen, server.RepoHTTPHandler{
-		Repositories: configuredRepositories,
-	}); err != nil {
+	handler := server.RepoHTTPHandler{Repositories: configuredRepositories}
+	if conf.SSL.Enabled {
+		err = http.ListenAndServeTLS(conf.Listen, conf.SSL.CertFile, conf.SSL.KeyFile, handler)
+	} else {
+		err = http.ListenAndServe(conf.Listen, handler)
+	}
+
+	if err != nil {
 		log.Fatalln(err)
 	}
 }
