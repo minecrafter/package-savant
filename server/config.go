@@ -1,11 +1,8 @@
 package server
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"os"
-
-	"golang.org/x/crypto/bcrypt"
 )
 
 type Config struct {
@@ -29,30 +26,13 @@ type StorageConfig struct {
 }
 
 type AuthenticationConfig struct {
-	Logins map[string]string
+	Type string
 }
 
 type SSLConfig struct {
-	Enabled bool
+	Enabled  bool
 	CertFile string
-	KeyFile string
-}
-
-func (c AuthenticationConfig) CheckPassword(username, password string) (bool, error) {
-	b64password, ok := c.Logins[username]
-	if !ok {
-		return false, nil
-	}
-
-	decodedPassword, err := base64.StdEncoding.DecodeString(b64password)
-	if err != nil {
-		return false, err
-	}
-
-	if err = bcrypt.CompareHashAndPassword(decodedPassword, []byte(password)); err != nil {
-		return false, err
-	}
-	return true, nil
+	KeyFile  string
 }
 
 func LoadConfig(path string) (*Config, error) {
