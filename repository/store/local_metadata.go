@@ -59,3 +59,16 @@ func (ms *LocalMetadataStore) Store(metadata repository.PackageMetadata) error {
 	json.NewEncoder(file).Encode(ms.loadedData)
 	return nil
 }
+
+// Returns all package IDs.
+func (ms *LocalMetadataStore) GetAllIDs() (*[]string, error) {
+	keys := make([]string, len(ms.loadedData))
+
+	i := 0
+	for k := range ms.loadedData {
+		keys[i] = k
+		i++
+	}
+
+	return &keys, nil
+}

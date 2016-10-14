@@ -13,6 +13,7 @@ var (
 // MetadataStore represents a storage of metadata.
 type MetadataStore interface {
 	FindByID(id string) (*PackageMetadata, error)
+	GetAllIDs() (*[]string, error)
 	Store(metadata PackageMetadata) error
 }
 
