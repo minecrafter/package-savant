@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"crypto/sha1"
 	"encoding/hex"
+	"encoding/json"
 	"encoding/xml"
 	"io"
 	"log"
@@ -48,9 +49,65 @@ func (h *MavenRetrieveHandler) GetMavenFile(w http.ResponseWriter, r *http.Reque
 		h.serveMavenFile(w, r, subtype)
 	} else if strings.HasSuffix(subtype, ".pom.md5") || strings.HasSuffix(subtype, ".pom.sha1") || strings.HasSuffix(subtype, ".jar.md5") || strings.HasSuffix(subtype, ".jar.sha1") {
 		h.serveMavenHash(w, subtype)
+	} else if subtype == "/api/packages.json" {
+		h.servePackageListing(w, r)
+	} else if strings.HasPrefix(subtype, "/api/packages/") && strings.HasSuffix(subtype, ".json") {
+		h.serveVersionListing(w, r, subtype)
 	} else {
 		w.WriteHeader(http.StatusNotFound)
 	}
+}
+
+func (h *MavenRetrieveHandler) servePackageListing(w http.ResponseWriter, r *http.Request) {
+	ids, err := h.metadataStore.GetAllIDs()
+	if err != nil {
+		log.Printf("Unable to get package ID list: %s", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	out := struct {
+		Packages []string `json:"packages"`
+	}{
+		Packages: *ids,
+	}
+	w.Header().Add("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(&out)
+}
+
+func (h *MavenRetrieveHandler) serveVersionListing(w http.ResponseWriter, r *http.Request, subtype string) {
+	stripped := strings.TrimPrefix(strings.TrimSuffix(subtype, ".json"), "/api/packages/")
+	pkg, err := h.metadataStore.FindByID(stripped)
+	if err != nil {
+		if err == repository.ErrPackageNotFound {
+			// package not found
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte("package not found"))
+		} else {
+			log.Printf("Unable to lookup package %s: %s", stripped, err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// Copy and sort versions. While we could have sorted versions beforehand, we would only gain minimal benefits.
+	versions := make([]repository.PackageVersionMetadata, len(pkg.Versions))
+	copy(versions, pkg.Versions)
+	repository.SortVersionsByCreated(versions)
+
+	// Stringify the sorted versions.
+	sortedVersions := make([]string, len(pkg.Versions))
+	for i, version := range versions {
+		sortedVersions[i] = version.Version
+	}
+
+	out := struct {
+		Versions []string `json:"versions"`
+	}{
+		Versions: sortedVersions,
+	}
+	w.Header().Add("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(&out)
 }
 
 func getPackageID(path string, inPackage bool) string {
@@ -59,9 +116,9 @@ func getPackageID(path string, inPackage bool) string {
 	}
 	parts := strings.Split(path, "/")
 	if inPackage {
-		return strings.Join(parts[:len(parts)-2], ":")
+		return strings.Join(parts[:len(parts)-3], ".") + ":" + parts[len(parts)-3]
 	}
-	return strings.Join(parts[:len(parts)-1], ":")
+	return strings.Join(parts[:len(parts)-2], ".") + ":" + parts[len(parts)-2]
 }
 
 func getPackageMavenData(path string, inPackage bool) repository.MavenData {
@@ -90,6 +147,7 @@ func getPackageVersion(path string) string {
 func (h *MavenRetrieveHandler) serveMavenMetadata(w http.ResponseWriter, path string) {
 	// get package ID
 	id := getPackageID(path, false)
+	log.Println("id", id)
 
 	// get package metadata
 	metadata, err := h.metadataStore.FindByID(id)
@@ -117,6 +175,7 @@ func (h *MavenRetrieveHandler) serveMavenHash(w http.ResponseWriter, path string
 	version := getPackageVersion(path)
 
 	// get package metadata
+	log.Println("id", id, "version", version)
 	metadata, err := h.metadataStore.FindByID(id)
 	if err != nil {
 		if err == repository.ErrPackageNotFound {
