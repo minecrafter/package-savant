@@ -147,7 +147,6 @@ func getPackageVersion(path string) string {
 func (h *MavenRetrieveHandler) serveMavenMetadata(w http.ResponseWriter, path string) {
 	// get package ID
 	id := getPackageID(path, false)
-	log.Println("id", id)
 
 	// get package metadata
 	metadata, err := h.metadataStore.FindByID(id)
@@ -175,7 +174,6 @@ func (h *MavenRetrieveHandler) serveMavenHash(w http.ResponseWriter, path string
 	version := getPackageVersion(path)
 
 	// get package metadata
-	log.Println("id", id, "version", version)
 	metadata, err := h.metadataStore.FindByID(id)
 	if err != nil {
 		if err == repository.ErrPackageNotFound {
