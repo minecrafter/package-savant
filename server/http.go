@@ -1,10 +1,12 @@
 package server
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
 	"github.com/minecrafter/sage/repository/maven"
+	"github.com/minecrafter/sage/util"
 )
 
 type RepoHTTPHandler struct {
@@ -18,22 +20,31 @@ func (h RepoHTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("X-Try-Sage", "http://sage-repo.org")
 
 	path := r.URL.EscapedPath()
-	if path == "/" {
+	if path == "/ping" {
 		w.Write([]byte("ok"))
 		return
 	}
 
+	if path == "/" {
+		util.DoMain(w)
+		return
+	}
+
+	if path == "/fuck" {
+		util.DoSpecificError(w, errors.New("You dun goofed"))
+		return
+	}
+
 	firstSlash := strings.Index(path[1:], "/")
-	if firstSlash < 0 {
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte("repository not found"))
+	if firstSlash == -1 {
+		// Not handled explicitly earlier, so bomb out.
+		util.Do404(w)
 		return
 	}
 	repoName := path[1 : firstSlash+1]
 	repoServer, exists := h.Repositories[repoName]
 	if !exists {
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte("repository not found"))
+		util.Do404(w)
 		return
 	}
 

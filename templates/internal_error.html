@@ -1,0 +1,20 @@
+{{define "internal_error"}}
+{{template "header" "Error"}}
+        <div class="mw9 center ph3-ns">
+            <div class="cf ph2-ns">
+                <div class="fl w-100 pa2">
+                    <div class="bg-white tc pv4">
+                        <h1 class="f2 lh-title">Oops!</h1>
+                        {{if .Error}}
+                        <p>An error has occurred:</p>
+                        <pre><code>{{.Error}}</code></pre>
+                        {{else}}
+                        <p>An error has occurred.</p>
+                        {{end}}
+                        <p>This is most likely a bug in Sage. Report the issue <a href="https://github.com/minecrafter/sage/issues" class="link dark-blue hover-blue">here</a>.
+                    </div>
+                </div>
+            </div>
+        </div>
+{{template "footer"}}
+{{end}}

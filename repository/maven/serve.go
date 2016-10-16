@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/minecrafter/sage/repository"
+	"github.com/minecrafter/sage/util"
 )
 
 type MavenRetrieveHandler struct {
@@ -37,7 +38,7 @@ func (h *MavenRetrieveHandler) GetMavenFile(w http.ResponseWriter, r *http.Reque
 	path := r.URL.EscapedPath()
 	if !strings.HasPrefix(path, h.root) {
 		// Can't handle this request
-		w.WriteHeader(http.StatusNotFound)
+		util.Do404(w)
 		return
 	}
 
@@ -54,7 +55,7 @@ func (h *MavenRetrieveHandler) GetMavenFile(w http.ResponseWriter, r *http.Reque
 	} else if strings.HasPrefix(subtype, "/api/packages/") && strings.HasSuffix(subtype, ".json") {
 		h.serveVersionListing(w, r, subtype)
 	} else {
-		w.WriteHeader(http.StatusNotFound)
+		util.Do404(w)
 	}
 }
 
@@ -62,7 +63,7 @@ func (h *MavenRetrieveHandler) servePackageListing(w http.ResponseWriter, r *htt
 	ids, err := h.metadataStore.GetAllIDs()
 	if err != nil {
 		log.Printf("Unable to get package ID list: %s", err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
+		util.DoSpecificError(w, err)
 		return
 	}
 
@@ -81,11 +82,10 @@ func (h *MavenRetrieveHandler) serveVersionListing(w http.ResponseWriter, r *htt
 	if err != nil {
 		if err == repository.ErrPackageNotFound {
 			// package not found
-			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte("package not found"))
+			util.Do404(w)
 		} else {
 			log.Printf("Unable to lookup package %s: %s", stripped, err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			util.DoSpecificError(w, err)
 		}
 		return
 	}
@@ -153,11 +153,10 @@ func (h *MavenRetrieveHandler) serveMavenMetadata(w http.ResponseWriter, path st
 	if err != nil {
 		if err == repository.ErrPackageNotFound {
 			// package not found
-			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte("package not found"))
+			util.Do404(w)
 		} else {
 			log.Printf("Unable to lookup package %s: %s", id, err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			util.DoSpecificError(w, err)
 		}
 		return
 	}
@@ -178,16 +177,13 @@ func (h *MavenRetrieveHandler) serveMavenHash(w http.ResponseWriter, path string
 	if err != nil {
 		if err == repository.ErrPackageNotFound {
 			// package not found
-			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte("package not found"))
+			util.Do404(w)
 		} else {
 			log.Printf("Unable to lookup package %s: %s", id, err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			util.DoSpecificError(w, err)
 		}
 		return
 	}
-
-	w.Header().Add("Content-Type", "text/plain")
 
 	// get specific file requested
 	for _, versionMetadata := range metadata.Versions {
@@ -199,6 +195,7 @@ func (h *MavenRetrieveHandler) serveMavenHash(w http.ResponseWriter, path string
 				break
 			}
 
+			w.Header().Add("Content-Type", "text/plain")
 			if strings.HasSuffix(path, "sha1") {
 				w.Write([]byte(data.SHA1))
 			} else if strings.HasSuffix(path, "md5") {
@@ -209,8 +206,7 @@ func (h *MavenRetrieveHandler) serveMavenHash(w http.ResponseWriter, path string
 	}
 
 	// otherwise, not found
-	w.WriteHeader(http.StatusNotFound)
-	w.Write([]byte("content not found"))
+	util.Do404(w)
 }
 
 func (h *MavenRetrieveHandler) serveMavenFile(w http.ResponseWriter, r *http.Request, path string) {
@@ -223,11 +219,11 @@ func (h *MavenRetrieveHandler) serveMavenFile(w http.ResponseWriter, r *http.Req
 	if err != nil {
 		if err == repository.ErrPackageNotFound {
 			// package not found
-			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte("package not found"))
+			util.Do404(w)
 		} else {
 			log.Printf("Unable to lookup package %s: %s", id, err.Error())
 			w.WriteHeader(http.StatusInternalServerError)
+			util.DoSpecificError(w, err)
 		}
 		return
 	}
@@ -243,8 +239,7 @@ func (h *MavenRetrieveHandler) serveMavenFile(w http.ResponseWriter, r *http.Req
 			}
 			reader, err := h.storageStore.ReadByID(data.ID)
 			if err != nil {
-				log.Printf("Unable to read content: %s", err.Error())
-				w.WriteHeader(http.StatusInternalServerError)
+				util.DoSpecificError(w, err)
 			} else {
 				closer, ok := reader.(io.Closer)
 				if ok {
@@ -257,8 +252,7 @@ func (h *MavenRetrieveHandler) serveMavenFile(w http.ResponseWriter, r *http.Req
 	}
 
 	// otherwise, not found
-	w.WriteHeader(http.StatusNotFound)
-	w.Write([]byte("content not found"))
+	util.Do404(w)
 }
 
 func (h *MavenRetrieveHandler) PutMavenFile(w http.ResponseWriter, r *http.Request, path string) {
@@ -280,7 +274,7 @@ func (h *MavenRetrieveHandler) PutMavenFile(w http.ResponseWriter, r *http.Reque
 	writer, sid, err := h.storageStore.Write()
 	if err != nil {
 		log.Printf("Unable to create content: %s", err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
+		util.DoSpecificError(w, err)
 		return
 	}
 	defer writer.Close()
@@ -289,7 +283,7 @@ func (h *MavenRetrieveHandler) PutMavenFile(w http.ResponseWriter, r *http.Reque
 	teeReader := io.TeeReader(r.Body, io.MultiWriter(sha1Sum, md5Sum))
 	if _, err := io.Copy(writer, teeReader); err != nil {
 		log.Printf("Unable to create content: %s", err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
+		util.DoSpecificError(w, err)
 		return
 	}
 
@@ -320,7 +314,7 @@ func (h *MavenRetrieveHandler) PutMavenFile(w http.ResponseWriter, r *http.Reque
 			}
 		} else {
 			log.Printf("Unable to lookup package %s: %s", id, err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			util.DoSpecificError(w, err)
 			return
 		}
 	} else {
@@ -347,7 +341,7 @@ func (h *MavenRetrieveHandler) PutMavenFile(w http.ResponseWriter, r *http.Reque
 
 	if err = h.metadataStore.Store(*metadata); err != nil {
 		log.Printf("Unable to create version: %s", err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
+		util.DoSpecificError(w, err)
 	} else {
 		w.WriteHeader(http.StatusCreated)
 	}
