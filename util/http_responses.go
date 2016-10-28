@@ -6,6 +6,8 @@ import (
 	"log"
 	"net/http"
 
+	"fmt"
+
 	"github.com/minecrafter/sage/bindata"
 )
 
@@ -48,13 +50,22 @@ func DoSpecificError(w http.ResponseWriter, err error) {
 	base.ExecuteTemplate(w, "internal_error", struct {
 		Error string
 	}{
-		Error: err.Error(),
+		Error: fmt.Sprintf("%+v", err),
 	})
 }
 
-func DoMain(w http.ResponseWriter) {
+func DoMain(w http.ResponseWriter, repositories []string, totalCount int) {
 	w.Header().Set("Content-Type", "text/html")
-	if err := base.ExecuteTemplate(w, "main", nil); err != nil {
+	data := struct {
+		RepositoryCount int
+		Repositories    []string
+		PackageCount    int
+	}{
+		RepositoryCount: len(repositories),
+		Repositories:    repositories,
+		PackageCount:    totalCount,
+	}
+	if err := base.ExecuteTemplate(w, "main", data); err != nil {
 		log.Println("Error while rendering", err)
 	}
 }

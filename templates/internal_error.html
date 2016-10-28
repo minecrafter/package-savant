@@ -1,20 +1,30 @@
 {{define "internal_error"}}
 {{template "header" "Error"}}
-        <div class="mw9 center ph3-ns">
-            <div class="cf ph2-ns">
-                <div class="fl w-100 pa2">
-                    <div class="bg-white tc pv4">
-                        <h1 class="f2 lh-title">Oops!</h1>
-                        {{if .Error}}
-                        <p>An error has occurred:</p>
-                        <pre><code>{{.Error}}</code></pre>
-                        {{else}}
-                        <p>An error has occurred.</p>
-                        {{end}}
-                        <p>This is most likely a bug in Sage. Report the issue <a href="https://github.com/minecrafter/sage/issues" class="link dark-blue hover-blue">here</a>.
-                    </div>
+        <section class="hero is-primary">
+            <div class="hero-body">
+                <div class="container">
+                <h1 class="title">
+                    Oops!
+                </h1>
+                <h2 class="subtitle">
+                    An error has occurred.
+                </h2>
                 </div>
             </div>
-        </div>
+        </section>
+          <section class="section">
+            <div class="container">
+                <div class="heading">
+                    <h1 class="title">What should I do?</h1>
+                </div>
+                <div class="content">
+                    <p>This is most likely a bug in Sage. Report the issue <a href="https://github.com/minecrafter/sage/issues">here</a>.</p>
+                    {{if .Error}}
+                    <p>Make sure to include the following information:</p>
+                    <pre><code>{{.Error}}</code></pre>
+                    {{end}}
+                </div>
+            </div>
+        </section>
 {{template "footer"}}
 {{end}}

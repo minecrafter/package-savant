@@ -1,12 +1,12 @@
 package server
 
 import (
-	"errors"
 	"net/http"
 	"strings"
 
 	"github.com/minecrafter/sage/repository/maven"
 	"github.com/minecrafter/sage/util"
+	"github.com/pkg/errors"
 )
 
 type RepoHTTPHandler struct {
@@ -26,7 +26,21 @@ func (h RepoHTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if path == "/" {
-		util.DoMain(w)
+		// get repository names and total package count
+		packageCount := 0
+		repositoryNames := make([]string, len(h.Repositories))
+		i := 0
+		for key, server := range h.Repositories {
+			packages, err := server.MetadataStore.GetAllIDs()
+			if err != nil {
+				// Skip this
+				continue
+			}
+			repositoryNames[i] = key
+			i++
+			packageCount += len(*packages)
+		}
+		util.DoMain(w, repositoryNames, packageCount)
 		return
 	}
 

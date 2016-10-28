@@ -1,14 +1,16 @@
 {{define "main"}}
 {{template "header" "Main page"}}
-        <div class="mw12 center ph3-ns bg-near-white">
-            <div class="cf ph2-ns">
-                <div class="fl w-100 pa2">
-                    <div class="tc pv4">
-                        <h1 class="f2 lh-title">Sage</h1>
-                        <p>This install is serving <span class="b">10</span> repositories with <span class="b">159</span> packages.</p>
-                    </div>
+        <section class="hero is-primary">
+            <div class="hero-body">
+                <div class="container">
+                <h1 class="title">
+                    Sage
+                </h1>
+                <h2 class="subtitle">
+                    <p>This install is serving <strong>{{.RepositoryCount}}</strong> {{if eq .RepositoryCount 1}}repository{{else}}repositories{{end}} with <strong>{{.PackageCount}}</strong> {{if eq .PackageCount 1}}package{{else}}packages{{end}}.</p>
+                </h2>
                 </div>
             </div>
-        </div>
+        </section>
 {{template "footer"}}
 {{end}}

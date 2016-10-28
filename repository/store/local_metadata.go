@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/minecrafter/sage/repository"
+	"github.com/pkg/errors"
 )
 
 // Represents a local metadata store.
@@ -41,7 +42,7 @@ func (ms *LocalMetadataStore) FindByID(id string) (*repository.PackageMetadata, 
 	if exists {
 		return &data, nil
 	}
-	return nil, repository.ErrPackageNotFound
+	return nil, errors.WithStack(repository.ErrPackageNotFound)
 }
 
 // Stores new metadata for a package.
@@ -52,7 +53,7 @@ func (ms *LocalMetadataStore) Store(metadata repository.PackageMetadata) error {
 
 	file, err := os.OpenFile(ms.path, os.O_WRONLY, 666)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 	defer file.Close()
 

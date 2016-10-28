@@ -3,11 +3,12 @@ package store
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"errors"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
 var (
@@ -31,7 +32,11 @@ func NewLocalPackageStore(path string) *LocalPackageStorage {
 func (s *LocalPackageStorage) ReadByID(id string) (io.ReadSeeker, error) {
 	realPath := filepath.Join(s.basePath, id)
 	if strings.HasPrefix(realPath, s.basePath) {
-		return os.Open(realPath)
+		file, err := os.Open(realPath)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+		return file, nil
 	}
 	return nil, errPathInvalid
 }
@@ -47,7 +52,7 @@ func (s *LocalPackageStorage) Write() (io.WriteCloser, string, error) {
 	realPath := filepath.Join(s.basePath, id)
 	file, err := os.Create(realPath)
 	if err != nil {
-		return nil, "", err
+		return nil, "", errors.WithStack(err)
 	}
 	return file, id, nil
 }

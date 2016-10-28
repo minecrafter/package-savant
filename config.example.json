@@ -1,5 +1,8 @@
 {
     "Listen": ":8196",
+    "Application": {
+        "SiteName": "Package Savant"
+    },
     "SSL": {
         "Enabled": false,
         "KeyFile": "key.pem",

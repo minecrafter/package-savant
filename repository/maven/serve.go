@@ -14,19 +14,20 @@ import (
 
 	"github.com/minecrafter/sage/repository"
 	"github.com/minecrafter/sage/util"
+	"github.com/pkg/errors"
 )
 
 type MavenRetrieveHandler struct {
 	root          string
-	metadataStore repository.MetadataStore
-	storageStore  repository.StorageStore
+	MetadataStore repository.MetadataStore
+	StorageStore  repository.StorageStore
 }
 
 func NewMavenRetrieveHandler(path string, metadataStore repository.MetadataStore, storageStore repository.StorageStore) MavenRetrieveHandler {
 	return MavenRetrieveHandler{
 		root:          path,
-		metadataStore: metadataStore,
-		storageStore:  storageStore,
+		MetadataStore: metadataStore,
+		StorageStore:  storageStore,
 	}
 }
 
@@ -60,7 +61,7 @@ func (h *MavenRetrieveHandler) GetMavenFile(w http.ResponseWriter, r *http.Reque
 }
 
 func (h *MavenRetrieveHandler) servePackageListing(w http.ResponseWriter, r *http.Request) {
-	ids, err := h.metadataStore.GetAllIDs()
+	ids, err := h.MetadataStore.GetAllIDs()
 	if err != nil {
 		log.Printf("Unable to get package ID list: %s", err.Error())
 		util.DoSpecificError(w, err)
@@ -78,14 +79,14 @@ func (h *MavenRetrieveHandler) servePackageListing(w http.ResponseWriter, r *htt
 
 func (h *MavenRetrieveHandler) serveVersionListing(w http.ResponseWriter, r *http.Request, subtype string) {
 	stripped := strings.TrimPrefix(strings.TrimSuffix(subtype, ".json"), "/api/packages/")
-	pkg, err := h.metadataStore.FindByID(stripped)
+	pkg, err := h.MetadataStore.FindByID(stripped)
 	if err != nil {
 		if err == repository.ErrPackageNotFound {
 			// package not found
 			util.Do404(w)
 		} else {
 			log.Printf("Unable to lookup package %s: %s", stripped, err.Error())
-			util.DoSpecificError(w, err)
+			util.DoSpecificError(w, errors.WithStack(err))
 		}
 		return
 	}
@@ -149,7 +150,7 @@ func (h *MavenRetrieveHandler) serveMavenMetadata(w http.ResponseWriter, path st
 	id := getPackageID(path, false)
 
 	// get package metadata
-	metadata, err := h.metadataStore.FindByID(id)
+	metadata, err := h.MetadataStore.FindByID(id)
 	if err != nil {
 		if err == repository.ErrPackageNotFound {
 			// package not found
@@ -173,7 +174,7 @@ func (h *MavenRetrieveHandler) serveMavenHash(w http.ResponseWriter, path string
 	version := getPackageVersion(path)
 
 	// get package metadata
-	metadata, err := h.metadataStore.FindByID(id)
+	metadata, err := h.MetadataStore.FindByID(id)
 	if err != nil {
 		if err == repository.ErrPackageNotFound {
 			// package not found
@@ -215,7 +216,7 @@ func (h *MavenRetrieveHandler) serveMavenFile(w http.ResponseWriter, r *http.Req
 	version := getPackageVersion(path)
 
 	// get package metadata
-	metadata, err := h.metadataStore.FindByID(id)
+	metadata, err := h.MetadataStore.FindByID(id)
 	if err != nil {
 		if err == repository.ErrPackageNotFound {
 			// package not found
@@ -237,7 +238,7 @@ func (h *MavenRetrieveHandler) serveMavenFile(w http.ResponseWriter, r *http.Req
 			if !exists {
 				break
 			}
-			reader, err := h.storageStore.ReadByID(data.ID)
+			reader, err := h.StorageStore.ReadByID(data.ID)
 			if err != nil {
 				util.DoSpecificError(w, err)
 			} else {
@@ -271,7 +272,7 @@ func (h *MavenRetrieveHandler) PutMavenFile(w http.ResponseWriter, r *http.Reque
 	version := getPackageVersion(path)
 
 	// Copy body to new storage file. Use io.TeeReader to allow us to calculate hashes at the same time.
-	writer, sid, err := h.storageStore.Write()
+	writer, sid, err := h.StorageStore.Write()
 	if err != nil {
 		log.Printf("Unable to create content: %s", err.Error())
 		util.DoSpecificError(w, err)
@@ -295,7 +296,7 @@ func (h *MavenRetrieveHandler) PutMavenFile(w http.ResponseWriter, r *http.Reque
 	fileName := path[strings.LastIndex(path, "/"):]
 
 	// create version and package if needed
-	metadata, err := h.metadataStore.FindByID(id)
+	metadata, err := h.MetadataStore.FindByID(id)
 	if err != nil {
 		if err == repository.ErrPackageNotFound {
 			// package not found, create
@@ -339,7 +340,7 @@ func (h *MavenRetrieveHandler) PutMavenFile(w http.ResponseWriter, r *http.Reque
 		}
 	}
 
-	if err = h.metadataStore.Store(*metadata); err != nil {
+	if err = h.MetadataStore.Store(*metadata); err != nil {
 		log.Printf("Unable to create version: %s", err.Error())
 		util.DoSpecificError(w, err)
 	} else {

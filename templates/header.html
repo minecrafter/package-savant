@@ -4,11 +4,22 @@
     <head>
         <title>{{.}} | Sage</title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <link rel="stylesheet" href="https://unpkg.com/tachyons@4.5.3/css/tachyons.min.css"/>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.2.3/css/bulma.min.css"/>
     </head>
     <body>
-        <nav class="pa3 pa3-ns bg-blue">
-            <a class="link dim white  b f6 f5-ns dib mr3" href="/" title="Sage">Sage</a>
-            <a class="link dim white    f6 f5-ns dib mr3" href="/repositories" title="Repositories">Repositories</a>
+        <nav class="nav">
+            <div class="nav-left">
+                <a class="nav-item is-brand" href="#">Sage</a>
+            </div>
+
+            <span class="nav-toggle">
+                <span></span>
+                <span></span>
+                <span></span>
+            </span>
+
+            <div class="nav-right nav-menu">
+                <a class="nav-item" href="#">Repositories</a>
+            </div>
         </nav>
 {{end}}
