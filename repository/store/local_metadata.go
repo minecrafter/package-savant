@@ -19,7 +19,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/minecrafter/sage/repository"
+	"github.com/minecrafter/package-savant/repository"
 	"github.com/pkg/errors"
 )
 

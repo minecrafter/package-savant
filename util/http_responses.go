@@ -22,7 +22,7 @@ import (
 
 	"fmt"
 
-	"github.com/minecrafter/sage/bindata"
+	"github.com/minecrafter/package-savant/bindata"
 )
 
 var (

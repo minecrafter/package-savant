@@ -14,7 +14,7 @@
 
 package maven
 
-import "github.com/minecrafter/sage/repository"
+import "github.com/minecrafter/package-savant/repository"
 
 const (
 	mavenDateFormat = "20060102150405"

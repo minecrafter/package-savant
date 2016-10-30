@@ -18,8 +18,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/minecrafter/sage/repository/maven"
-	"github.com/minecrafter/sage/util"
+	"github.com/minecrafter/package-savant/repository/maven"
+	"github.com/minecrafter/package-savant/util"
 	"github.com/pkg/errors"
 )
 
@@ -29,9 +29,7 @@ type RepoHTTPHandler struct {
 
 func (h RepoHTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// embellish ourselves
-	w.Header().Add("Server", "Sage")
-	w.Header().Add("X-Sage-Version", "0.1")
-	w.Header().Add("X-Try-Sage", "http://sage-repo.org")
+	w.Header().Add("Server", "Package Savant")
 
 	path := r.URL.EscapedPath()
 	if path == "/ping" {

@@ -18,9 +18,9 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/minecrafter/sage/repository/maven"
-	"github.com/minecrafter/sage/repository/store"
-	"github.com/minecrafter/sage/server"
+	"github.com/minecrafter/package-savant/repository/maven"
+	"github.com/minecrafter/package-savant/repository/store"
+	"github.com/minecrafter/package-savant/server"
 )
 
 func main() {

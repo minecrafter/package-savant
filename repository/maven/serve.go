@@ -26,8 +26,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/minecrafter/sage/repository"
-	"github.com/minecrafter/sage/util"
+	"github.com/minecrafter/package-savant/repository"
+	"github.com/minecrafter/package-savant/util"
 	"github.com/pkg/errors"
 )
 
